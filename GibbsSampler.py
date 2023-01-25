@@ -206,7 +206,7 @@ class GibbsSampler:
             if x_lim:
                 axes[i].set_xlim(0,x_lim)
         plt.title('Plots of relative frequencies  depending on the number of samples for various runs of the Gibbs sampler')
-        plt.savefig(outfile)
+        plt.savefig(outfile, bbox_inches='tight')
 
 
     @staticmethod
@@ -225,18 +225,18 @@ class GibbsSampler:
                 chain[f'coded_{v}'] = chain[v].apply(lambda x: 1.0 if x == 'T' else 0.0)
         
         # Creates plots
-        plots_num = len(chains)*len(var_list)
-        fig, axes = plt.subplots(plots_num, 1, figsize=(20, 20*plots_num))
-        k=0
-        for v in var_list:
-            for i, sample in enumerate(chains):
+        name = outfile.split('.')[:-1]
+        name = '.'.join(name)
+        for i, sample in enumerate(chains):
+            fig, axes = plt.subplots(len(var_list), 1, figsize=(20, 20*len(var_list)))
+            k = 0
+            for v in var_list:
                 x  = sample[f'coded_{v}']
-                plot_acf(x, lags=x_lim, ax=axes[k], title=f'Autocorrelation for {v} for the {i}. run of the Gibbs sampler')
+                plot_acf(x, lags=x_lim, ax=axes[k], title=f'Autocorrelation for {v} for the {i+1}. run of the Gibbs sampler')
                 axes[k].set_xlabel('Lags')
                 axes[k].set_ylabel('Autocorrelation')
                 k += 1
-
-        plt.savefig(outfile)
+            plt.savefig(name+'_'+str(i+1)+'.'+outfile.split('.')[-1], bbox_inches='tight')
 
     
     @staticmethod
@@ -254,8 +254,8 @@ class GibbsSampler:
         # Diagnoses Gelman & Rubin convergence  
         N = len(chains[0])
         M = len(chains)
-        means = [np.mean(chain[v]) for chain in chains]
-        sm2s = [chain[v].var(ddof=1) for chain in chains] 
+        means = [np.mean(chain[f'coded_{v}']) for chain in chains]
+        sm2s = [chain[f'coded_{v}'].var(ddof=1) for chain in chains] 
         W = np.mean(sm2s)
         B = np.array(means).var(ddof=1)*N
         var_est = (1-1/N)*W + B/N
@@ -273,15 +273,14 @@ if __name__ == "__main__":
     evidence = {'S': 'T', 'W': 'T'}
     # Results generating
     # Part 1
-    chains=[]
     for i in range(10):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task1_100samples_{i}')
-        chains.append(GB.sample(100))
+        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task1_100samples_{i}.csv')
+        GB.sample(100)
 
     # Part 2 
     chains = []
     for i in range(2):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_50000samples_{i}')
+        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_50000samples_{i}.csv')
         chains.append(GB.sample(50000))
     GB.plot_relative_freq(chains, ['R', 'C'], 'results/task2_relfreq.png')
     GB.plot_relative_freq(chains, ['R', 'C'], 'results/task2_relfreq_xlim10000.png', x_lim=10000)
@@ -290,17 +289,5 @@ if __name__ == "__main__":
     GB.plot_autocorrelation(chains, ['R', 'C'], 'results/task2_autocorr_xlim200.png', x_lim=200)
 
     for i in range(10):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_100samples_bi2000_to20_{i}')
+        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_100samples_bi2000_to20_{i}.csv')
         GB.sample_modified(100, burn_in=2000, thinning_out=20)
-    
-    for i in range(10):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_100samples_bi2000_to100_{i}')
-        GB.sample_modified(100, burn_in=2000, thinning_out=100)
-    
-    for i in range(10):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_100samples_bi1000_to20_{i}')
-        GB.sample_modified(100, burn_in=1000, thinning_out=20)
-    
-    for i in range(10):
-        GB = GibbsSampler(C_prob, R_prob, S_prob, W_prob, evidence, output=f'results/task2_100samples_bi1000_to100_{i}')
-        GB.sample_modified(100, burn_in=1000, thinning_out=100)
